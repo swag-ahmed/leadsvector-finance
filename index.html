@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <style>
+    :root {
+      --card: #1b1033;
+      --card-soft: #241542;
+      --card-hover: #2a1a4a;
+      --muted: #b8a8e6;
+      --text: #f3efff;
+      --accent: #a855f7;
+      --accent-soft: #9333ea;
+      --accent-glow: rgba(168,85,247,0.25);
+      --bad: #ff5c8a;
+      --good: #38f2b0;
+      --warn: #fbbf24;
+      --border: rgba(255,255,255,0.07);
+      --border-accent: rgba(168,85,247,0.3);
+      --shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: linear-gradient(160deg, #0f0820 0%, #1a0f30 60%, #0f1628 100%);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(168,85,247,0.4); border-radius: 99px; }
+
+    /* ── LOADING ── */
+    #loadingOverlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(15,8,32,0.88); backdrop-filter: blur(8px);
+      z-index: 9999; align-items: center; justify-content: center; flex-direction: column; gap: 18px;
+    }
+    #loadingOverlay.active { display: flex; }
+    .spinner {
+      width: 42px; height: 42px;
+      border: 3px solid rgba(168,85,247,0.15);
+      border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    .spinner-label { color: var(--muted); font-size: 13px; letter-spacing: 0.3px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── WRAP ── */
+    .wrap {
+      width: 100%; max-width: 1140px;
+      margin: 0 auto; padding: 24px 20px;
+      min-width: 0;
+    }
+
+    /* ── CARD BASE ── */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      min-width: 0; overflow: hidden;
+    }
+
+    /* ════════════════════════════
+       LOGIN
+    ════════════════════════════ */
+    #loginScreen {
+      min-height: 100vh; display: flex;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .login-box {
+      width: 100%; max-width: 420px;
+      background: var(--card); border: 1px solid var(--border-accent);
+      border-radius: 24px; padding: 40px 36px;
+      box-shadow: var(--shadow), 0 0 80px rgba(168,85,247,0.1);
+    }
+    .login-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+    .login-logo-icon {
+      width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--accent), var(--accent-soft));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 800; color: #fff; letter-spacing: -0.5px;
+    }
+    .login-logo-text { font-size: 17px; font-weight: 700; }
+    .login-logo-text span { color: var(--accent); }
+    .login-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .login-sub { color: var(--muted); font-size: 13px; margin-bottom: 28px; line-height: 1.5; }
+    .field-label { font-size: 11px; color: var(--muted); letter-spacing: 0.8px; margin-bottom: 7px; text-transform: uppercase; display: block; }
+    .login-box input {
+      width: 100%; padding: 13px 16px;
+      background: var(--card-soft); border: 1px solid var(--border);
+      border-radius: 12px; color: var(--text);
+      /* 16px prevents iOS auto-zoom on focus */
+      font-size: 16px;
+      outline: none; margin-bottom: 14px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .login-box input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .login-btn {
+      width: 100%; padding: 14px; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-soft));
+      color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      box-shadow: 0 8px 24px rgba(168,85,247,0.4);
+      letter-spacing: 0.2px;
+    }
+    .login-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .login-btn:active:not(:disabled) { transform: translateY(0); }
+    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    #loginError { margin-top: 14px; color: var(--bad); font-size: 13px; text-align: center; min-height: 20px; }
+
+    /* ════════════════════════════
+       TOPBAR
+    ════════════════════════════ */
+    .topbar {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
+      padding-bottom: 18px; border-bottom: 1px solid var(--border);
+    }
+    .brand-name { font-size: 20px; font-weight: 700; line-height: 1.2; }
+    .brand-name span { color: var(--accent); }
+    .brand-sub { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .topbar-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .pill {
+      padding: 6px 13px; border-radius: 999px;
+      background: rgba(168,85,247,0.12); border: 1px solid var(--border-accent);
+      color: var(--accent); font-size: 12px; font-weight: 500; white-space: nowrap;
+    }
+    select {
+      padding: 8px 12px; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--card-soft);
+      color: var(--text); font-size: 13px; outline: none; cursor: pointer;
+      transition: border-color 0.2s; max-width: 220px;
+    }
+    select:focus { border-color: var(--accent); }
+
+    /* ── SECTION TITLE ── */
+    .section-title {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      letter-spacing: 1.3px; text-transform: uppercase;
+      margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+    }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ════════════════════════════
+       KPI GRID
+    ════════════════════════════ */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px; margin-bottom: 14px;
+    }
+    .kpi-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 18px; padding: 18px 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      transition: border-color 0.2s, transform 0.2s;
+      min-width: 0;
+    }
+    .kpi-card:hover { border-color: var(--border-accent); transform: translateY(-2px); }
+    .kpi-label { font-size: 11px; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 10px; }
+    .kpi-value { font-size: 24px; font-weight: 700; word-break: break-word; line-height: 1.1; }
+    .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 7px; }
+    .kpi-card.good .kpi-value { color: var(--good); }
+    .kpi-card.bad  .kpi-value { color: var(--bad); }
+
+    /* ════════════════════════════
+       CHART
+    ════════════════════════════ */
+    .chart-card { margin-bottom: 14px; }
+    .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+
+    /* ════════════════════════════
+       TABLE
+    ════════════════════════════ */
+    .table-title { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; min-width: 520px; }
+    th, td { padding: 11px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
+    th { color: var(--muted); font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr { transition: background 0.15s; }
+    tbody tr:hover { background: rgba(255,255,255,0.025); }
+    .td-project { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .td-client  { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .td-nowrap  { white-space: nowrap; }
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 600; border: 1px solid transparent;
+    }
+    .badge.paid   { background: rgba(56,242,176,0.12); color: var(--good); border-color: rgba(56,242,176,0.25); }
+    .badge.unpaid { background: rgba(255,92,138,0.12); color: var(--bad);  border-color: rgba(255,92,138,0.25); }
+
+    /* ════════════════════════════
+       TEAM PAY
+    ════════════════════════════ */
+    #teamPaySection { margin-top: 36px; }
+
+    .pay-hero {
+      background: linear-gradient(135deg, #1e0f3a 0%, #2a1250 50%, #1a0f30 100%);
+      border: 1px solid var(--border-accent); border-radius: 24px; padding: 28px;
+      box-shadow: var(--shadow), 0 0 60px rgba(168,85,247,0.08);
+      margin-bottom: 14px; position: relative; overflow: hidden;
+    }
+    .pay-hero::before {
+      content: ''; position: absolute; top: -70px; right: -70px;
+      width: 220px; height: 220px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(168,85,247,0.12), transparent 70%);
+      pointer-events: none;
+    }
+    .pay-hero-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 22px;
+    }
+    .pay-period-label { font-size: 11px; color: var(--accent); letter-spacing: 1.2px; text-transform: uppercase; font-weight: 700; margin-bottom: 5px; }
+    .pay-period-name  { font-size: 22px; font-weight: 700; line-height: 1.2; }
+    .pay-total-hrs    { text-align: right; }
+    .pay-total-hrs .num { font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1; }
+    .pay-total-hrs .lbl { font-size: 10px; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; margin-top: 3px; }
+
+    /* THE CRITICAL FIX — min(200px,100%) prevents overflow on any screen */
+    .pay-cards-grid {
+      display: grid; gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+    }
+
+    .pay-card {
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      border-radius: 16px; padding: 16px;
+      transition: background 0.2s, border-color 0.2s, transform 0.2s;
+      min-width: 0;
+    }
+    .pay-card:hover { background: rgba(255,255,255,0.07); border-color: var(--border-accent); transform: translateY(-2px); }
+    .pay-card.highlight { background: rgba(168,85,247,0.1); border-color: var(--border-accent); box-shadow: 0 0 24px rgba(168,85,247,0.15); }
+    .pay-card-name { font-size: 11px; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 10px; font-weight: 700; }
+    .pay-card-hrs  { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+    .pay-card-hrs span { color: var(--text); font-weight: 600; }
+    .pay-usd { font-size: 20px; font-weight: 700; color: var(--good); margin-bottom: 4px; line-height: 1.2; }
+    .pay-bdt { font-size: 13px; color: var(--muted); }
+    .pay-bdt span { color: var(--warn); font-weight: 600; }
+    .pay-breakdown { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+    .pay-breakdown .val { color: var(--text); font-weight: 600; }
+    .pay-breakdown .val-accent { color: var(--accent); font-weight: 600; }
+
+    /* LV card */
+    .pay-card.lv-card { background: rgba(56,242,176,0.05); border-color: rgba(56,242,176,0.2); }
+    .pay-card.lv-card:hover { background: rgba(56,242,176,0.08); }
+    .lv-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); gap: 8px; }
+    .lv-row:last-child { border-bottom: none; }
+    .lv-row-label { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+    .lv-row-right  { text-align: right; flex-shrink: 0; }
+    .lv-row-val { font-size: 14px; font-weight: 700; display: block; }
+    .lv-row-val.gross  { color: var(--text); }
+    .lv-row-val.johnny { color: var(--bad); }
+    .lv-row-val.net    { color: var(--good); }
+    .lv-bdt { font-size: 11px; color: var(--muted); }
+    .lv-bdt span { color: var(--warn); }
+
+    /* History */
+    .history-toggle {
+      display: flex; align-items: center; gap: 10px; cursor: pointer;
+      padding: 14px 18px; border-radius: 14px;
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--muted); font-size: 13px; font-weight: 500;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      user-select: none; margin-bottom: 12px;
+    }
+    .history-toggle:hover { background: var(--card-hover); border-color: var(--border-accent); color: var(--text); }
+    .chevron { transition: transform 0.25s; margin-left: auto; font-size: 11px; }
+    .history-toggle.open .chevron { transform: rotate(180deg); }
+    .history-list { display: none; flex-direction: column; gap: 12px; }
+    .history-list.open { display: flex; }
+
+    .hist-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 18px 20px; }
+    .hist-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .hist-period { font-size: 14px; font-weight: 600; color: var(--text); }
+    .hist-hrs { font-size: 12px; color: var(--muted); }
+    .hist-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); gap: 8px; }
+    .hist-row:last-child { border-bottom: none; }
+    .hist-label { color: var(--muted); font-size: 13px; flex-shrink: 0; }
+    .hist-right { text-align: right; }
+    .hist-usd { color: var(--good); font-weight: 600; font-size: 14px; }
+    .hist-bdt { font-size: 11px; color: var(--muted); }
+    .hist-bdt span { color: var(--warn); }
+
+    /* ════════════════════════════
+       RESPONSIVE — Mobile First
+       Breakpoints: 900, 600, 380
+    ════════════════════════════ */
+
+    /* Tablet */
+    @media (max-width: 900px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    }
+
+    /* Phone */
+    @media (max-width: 600px) {
+      .wrap { padding: 14px 12px; }
+
+      /* Topbar */
+      .topbar { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; }
+      .topbar-right { width: 100%; gap: 8px; }
+      select { width: 100%; max-width: 100%; font-size: 14px; padding: 10px 12px; }
+      .brand-name { font-size: 18px; }
+
+      /* KPI */
+      .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+      .kpi-card { padding: 14px 13px; border-radius: 14px; }
+      .kpi-label { font-size: 10px; margin-bottom: 8px; }
+      .kpi-value { font-size: 18px; }
+      .kpi-sub { font-size: 11px; }
+
+      /* Cards */
+      .card { padding: 16px 14px; border-radius: 16px; }
+      .chart-title, .table-title { font-size: 13px; }
+
+      /* Table */
+      table { min-width: 480px; }
+      th, td { font-size: 12px; padding: 9px 10px; }
+
+      /* Pay hero */
+      .pay-hero { padding: 18px 14px; border-radius: 18px; }
+      .pay-period-name { font-size: 18px; }
+      .pay-total-hrs .num { font-size: 22px; }
+
+      /* Pay cards — FORCE single column */
+      .pay-cards-grid { grid-template-columns: 1fr !important; gap: 10px; }
+      .pay-card { padding: 14px; border-radius: 14px; }
+      .pay-usd { font-size: 18px; }
+      .pay-bdt { font-size: 12px; }
+
+      /* LV card */
+      .lv-row { padding: 7px 0; }
+      .lv-row-val { font-size: 13px; }
+      .lv-row-label { font-size: 11px; }
+
+      /* History */
+      .history-toggle { padding: 12px 14px; font-size: 12px; border-radius: 12px; }
+      .hist-card { padding: 14px 16px; border-radius: 14px; }
+      .hist-period { font-size: 13px; }
+      .hist-row { font-size: 12px; padding: 7px 0; }
+      .hist-usd { font-size: 13px; }
+
+      /* Login */
+      .login-box { padding: 28px 20px; border-radius: 20px; }
+      .login-title { font-size: 20px; }
+      .login-sub { font-size: 12px; margin-bottom: 22px; }
+      .login-btn { font-size: 14px; padding: 13px; }
+    }
+
+    /* Very small phones */
+    @media (max-width: 380px) {
+      .wrap { padding: 12px 10px; }
+      .kpi-value { font-size: 16px; }
+      .pay-period-name { font-size: 16px; }
+      .pay-total-hrs .num { font-size: 20px; }
+      .pay-usd { font-size: 16px; }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="spinner-label" id="loadingLabel">Loading…</div>
+</div>
+
+<!-- ── LOGIN ── -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">LV</div>
+      <div class="login-logo-text">Leads<span>Vector</span></div>
+    </div>
+    <div class="login-title">Welcome back</div>
+    <div class="login-sub">Sign in to access your finance dashboard</div>
+    <label class="field-label" for="username">Username</label>
+    <input id="username" type="text" placeholder="Enter your username" autocomplete="username">
+    <label class="field-label" for="password">Password</label>
+    <input id="password" type="password" placeholder="Enter your password" autocomplete="current-password">
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+    <div id="loginError" role="alert"></div>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app" style="display:none;">
+  <div class="wrap">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div>
+        <div class="brand-name">Leads<span>Vector</span> Finance</div>
+        <div class="brand-sub" id="subtitle"></div>
+      </div>
+      <div class="topbar-right">
+        <select id="viewSelect" style="display:none;" aria-label="Select view"></select>
+        <div class="pill" id="userpill"></div>
+      </div>
+    </div>
+
+    <!-- Finance Overview -->
+    <div id="financeSection">
+      <div class="section-title">Finance Overview</div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">This Month</div>
+          <div class="kpi-value" id="kpiThisMonth">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">This Year</div>
+          <div class="kpi-value" id="kpiThisYear">—</div>
+        </div>
+        <div class="kpi-card good">
+          <div class="kpi-label">Total</div>
+          <div class="kpi-value" id="kpiTotal">—</div>
+        </div>
+        <div class="kpi-card bad">
+          <div class="kpi-label">Pending Amount</div>
+          <div class="kpi-value" id="kpiPendingAmt">—</div>
+          <div class="kpi-sub">Jobs: <span id="kpiPendingCount">—</span></div>
+        </div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="chart-title">Monthly Trend — Last 12 Months</div>
+        <canvas id="monthlyChart" height="110"></canvas>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <div class="table-title">Transaction Details</div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Project</th><th>Client</th>
+                <th>Date</th><th>Status</th><th>Income</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team Pay -->
+    <div id="teamPaySection" style="display:none;">
+      <div class="section-title" style="margin-top:36px;">Team Pay — Hours &amp; Earnings</div>
+
+      <div class="pay-hero">
+        <div class="pay-hero-top">
+          <div>
+            <div class="pay-period-label">Current Period</div>
+            <div class="pay-period-name" id="payCurrentPeriod">—</div>
+          </div>
+          <div class="pay-total-hrs">
+            <div class="num" id="payTotalHrs">—</div>
+            <div class="lbl">Total Hours</div>
+          </div>
+        </div>
+        <div class="pay-cards-grid" id="payCardsGrid"></div>
+      </div>
+
+      <div class="history-toggle" id="historyToggle" onclick="toggleHistory()" role="button" tabindex="0">
+        <span>📅</span>
+        <span>Past 3 Periods</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="history-list" id="historyList" role="list"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+"use strict";
+let sessionToken = null, chart = null;
+const dashCache = {}, payCache = {};
+const CACHE_TTL = 5 * 60 * 1000;
+
+/* ── Formatters ── */
+const money = n => '$' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const bdt   = n => '৳' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0,  maximumFractionDigits: 0 });
+const hrs   = n => Number(n || 0).toFixed(2);
+
+/* ── Loading ── */
+function showLoading(msg) {
+  document.getElementById("loadingLabel").textContent = msg || "Loading…";
+  document.getElementById("loadingOverlay").classList.add("active");
+}
+function hideLoading() {
+  document.getElementById("loadingOverlay").classList.remove("active");
+}
+
+/* ── Enter key on login ── */
+document.addEventListener("DOMContentLoaded", () => {
+  ["username", "password"].forEach(id => {
+    document.getElementById(id).addEventListener("keydown", e => {
+      if (e.key === "Enter") doLogin();
+    });
+  });
+  // Keyboard support for history toggle
+  document.getElementById("historyToggle").addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleHistory(); }
+  });
+});
+
+/* ── Login ── */
+function doLogin() {
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const btn      = document.getElementById("loginBtn");
+  const errEl    = document.getElementById("loginError");
+  errEl.textContent = "";
+
+  if (!username || !password) {
+    errEl.textContent = "Please enter your username and password.";
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = "Signing in…";
+  showLoading("Authenticating…");
+
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading(); btn.disabled = false; btn.textContent = "Sign In";
+      if (!res || !res.ok) { errEl.textContent = res?.message || "Login failed."; return; }
+      sessionToken = res.token;
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("app").style.display = "block";
+      loadViews();
+    })
+    .withFailureHandler(() => {
+      hideLoading(); btn.disabled = false; btn.textContent = "Sign In";
+      errEl.textContent = "Connection error. Please try again.";
+    })
+    .login(username, password);
+}
+
+/* ── Load views ── */
+function loadViews() {
+  showLoading("Setting up your dashboard…");
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (!res || !res.ok) return;
+      const sel = document.getElementById("viewSelect");
+      if (res.views.length > 1) {
+        sel.style.display = "block"; sel.innerHTML = "";
+        res.views.forEach(v => {
+          const o = document.createElement("option");
+          o.value = v.key; o.textContent = v.label;
+          sel.appendChild(o);
+        });
+        sel.addEventListener("change", () => loadAll(sel.value));
+      }
+      document.getElementById("userpill").textContent = res.email;
+      loadAll(res.views[0].key);
+    })
+    .withFailureHandler(() => hideLoading())
+    .getMyViews(sessionToken);
+}
+
+/* ── Load finance + pay in parallel ── */
+function loadAll(viewKey) {
+  const now = Date.now();
+  const cd  = dashCache[viewKey];
+  const cp  = payCache[viewKey];
+  if (cd && cp && (now - cd.ts < CACHE_TTL) && (now - cp.ts < CACHE_TTL)) {
+    renderFinance(cd.data); renderTeamPay(cp.data); return;
+  }
+  showLoading("Loading dashboard…");
+  let fd = false, pd = false, fin = null, pay = null;
+
+  function tryRender() {
+    if (!fd || !pd) return;
+    hideLoading();
+    if (fin && fin.ok) { dashCache[viewKey] = { data: fin, ts: Date.now() }; renderFinance(fin); }
+    if (pay && pay.ok) { payCache[viewKey]  = { data: pay, ts: Date.now() }; renderTeamPay(pay); }
+  }
+
+  google.script.run
+    .withSuccessHandler(d => { fin = d; fd = true; tryRender(); })
+    .withFailureHandler(() => { fd = true; tryRender(); })
+    .getDashboardDataForView(sessionToken, viewKey);
+
+  google.script.run
+    .withSuccessHandler(d => { pay = d; pd = true; tryRender(); })
+    .withFailureHandler(() => { pd = true; tryRender(); })
+    .getTeamPayData(sessionToken, viewKey);
+}
+
+/* ── Render Finance ── */
+function renderFinance(data) {
+  if (!data || !data.ok) return;
+  document.getElementById("subtitle").textContent = data.user.label + " • " + data.view.label;
+  document.getElementById("kpiThisMonth").textContent  = money(data.kpis.thisMonth);
+  document.getElementById("kpiThisYear").textContent   = money(data.kpis.thisYear);
+  document.getElementById("kpiTotal").textContent      = money(data.kpis.total);
+  document.getElementById("kpiPendingAmt").textContent = money(data.kpis.pendingAmt);
+  document.getElementById("kpiPendingCount").textContent = data.kpis.pendingCount;
+
+  const ctx = document.getElementById("monthlyChart").getContext("2d");
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: data.monthly.map(x => x.label),
+      datasets: [{
+        data: data.monthly.map(x => x.income),
+        borderColor: "#a855f7",
+        backgroundColor: "rgba(168,85,247,0.12)",
+        tension: 0.4, fill: true,
+        pointRadius: 4, pointHoverRadius: 6,
+        pointBackgroundColor: "#a855f7",
+        pointBorderColor: "#0f0820", pointBorderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: "#1b1033",
+        borderColor: "rgba(168,85,247,0.3)", borderWidth: 1,
+        titleColor: "#b8a8e6", bodyColor: "#f3efff",
+        callbacks: { label: ctx => ' ' + money(ctx.parsed.y) }
+      }},
+      scales: {
+        x: {
+          grid: { color: "rgba(255,255,255,0.04)" },
+          ticks: { color: "#b8a8e6", font: { size: 10 }, maxTicksLimit: 6, maxRotation: 30 }
+        },
+        y: {
+          grid: { color: "rgba(255,255,255,0.04)" },
+          ticks: { color: "#b8a8e6", font: { size: 10 }, callback: v => '$' + v.toLocaleString() }
+        }
+      }
+    }
+  });
+
+  const tbody = document.getElementById("rows");
+  tbody.innerHTML = "";
+  data.rows.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="td-project" title="${r.projectTitle || ''}">${r.projectTitle || "—"}</td>
+      <td class="td-client"  title="${r.clientName   || ''}">${r.clientName   || "—"}</td>
+      <td class="td-nowrap">${r.paymentDateText || "—"}</td>
+      <td><span class="badge ${r.paymentStatus === 'PAID' ? 'paid' : 'unpaid'}">${r.paymentStatus || "—"}</span></td>
+      <td class="td-nowrap">${money(r.income)}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ── Name map ── */
+const NAME_MAP = { rion: "Rion", shahinur: "Shahinur", arif: "Arif", chompa: "Chompa", shohag: "Shohag (CEO)" };
+
+/* ── Render Team Pay ── */
+function renderTeamPay(data) {
+  if (!data || !data.ok) return;
+  document.getElementById("teamPaySection").style.display = "block";
+  const cur = data.current;
+  if (!cur) return;
+
+  document.getElementById("payCurrentPeriod").textContent = cur.period;
+  document.getElementById("payTotalHrs").textContent      = hrs(cur.totalHrs);
+
+  const grid = document.getElementById("payCardsGrid");
+  grid.innerHTML = "";
+  const vis = data.visibleAs;
+
+  if (vis === "leadsVector") {
+    ["rion", "shahinur", "arif", "chompa", "shohag"].forEach(p => grid.appendChild(makePersonCard(p, cur.pay[p], vis)));
+    grid.appendChild(makeLVCard(cur.pay.leadsVector));
+  } else if (vis === "shohag") {
+    grid.appendChild(makePersonCard("shohag", cur.pay.shohag, vis));
+    grid.appendChild(makeLVCard(cur.pay.leadsVector));
+  } else {
+    grid.appendChild(makePersonCard(vis, cur.pay[vis], vis));
+  }
+
+  const histList = document.getElementById("historyList");
+  histList.innerHTML = "";
+  (data.history || []).forEach(h => histList.appendChild(makeHistCard(h, vis)));
+}
+
+function makePersonCard(name, pay, vis) {
+  const d = document.createElement("div");
+  d.className = "pay-card" + (name === vis ? " highlight" : "");
+
+  let breakdown = "";
+  if (name === "shohag" && pay.selfUsd != null) {
+    breakdown = `<div class="pay-breakdown">
+      Self: <span class="val">${money(pay.selfUsd)}</span>
+      &nbsp;+&nbsp; From team: <span class="val-accent">${money(pay.fromOthersUsd)}</span>
+    </div>`;
+  }
+
+  d.innerHTML = `
+    <div class="pay-card-name">${NAME_MAP[name] || name}</div>
+    <div class="pay-card-hrs">Hours: <span>${hrs(pay.hrs)}</span></div>
+    <div class="pay-usd">${money(pay.usd)}</div>
+    <div class="pay-bdt">BDT <span>${bdt(pay.bdt)}</span></div>
+    ${breakdown}`;
+  return d;
+}
+
+function makeLVCard(lv) {
+  const d = document.createElement("div");
+  d.className = "pay-card lv-card";
+  d.style.gridColumn = "1 / -1";
+  d.innerHTML = `
+    <div class="pay-card-name" style="color:var(--good);margin-bottom:14px;">LeadsVector Revenue</div>
+    <div class="lv-row">
+      <span class="lv-row-label">Total Hours</span>
+      <div class="lv-row-right"><span class="lv-row-val gross">${hrs(lv.hrs)} hrs</span></div>
+    </div>
+    <div class="lv-row">
+      <span class="lv-row-label">Gross (× $20)</span>
+      <div class="lv-row-right">
+        <span class="lv-row-val gross">${money(lv.grossUsd)}</span>
+        <div class="lv-bdt">BDT <span>${bdt(lv.grossBdt)}</span></div>
+      </div>
+    </div>
+    <div class="lv-row">
+      <span class="lv-row-label">Johnny Nel (20%)</span>
+      <div class="lv-row-right">
+        <span class="lv-row-val johnny">− ${money(lv.johnnyUsd)}</span>
+        <div class="lv-bdt">BDT <span>${bdt(lv.johnnyBdt)}</span></div>
+      </div>
+    </div>
+    <div class="lv-row">
+      <span class="lv-row-label" style="color:var(--good);font-weight:700;">Net Revenue</span>
+      <div class="lv-row-right">
+        <span class="lv-row-val net">${money(lv.netUsd)}</span>
+        <div class="lv-bdt">BDT <span>${bdt(lv.netBdt)}</span></div>
+      </div>
+    </div>`;
+  return d;
+}
+
+function makeHistCard(h, vis) {
+  const d = document.createElement("div");
+  d.className = "hist-card";
+  let rows = "";
+
+  const addRow = (label, pay) => {
+    rows += `<div class="hist-row">
+      <span class="hist-label">${label}
+        <span style="font-size:11px;opacity:0.7;">(${hrs(pay.hrs)} hrs)</span>
+      </span>
+      <div class="hist-right">
+        <div class="hist-usd">${money(pay.usd != null ? pay.usd : pay.netUsd)}</div>
+        <div class="hist-bdt">BDT <span>${bdt(pay.bdt != null ? pay.bdt : pay.netBdt)}</span></div>
+      </div>
+    </div>`;
+  };
+
+  if (vis === "leadsVector") {
+    ["rion", "shahinur", "arif", "chompa", "shohag"].forEach(p => addRow(NAME_MAP[p], h.pay[p]));
+    rows += `<div class="hist-row">
+      <span class="hist-label" style="color:var(--good);font-weight:600;">LV Net</span>
+      <div class="hist-right">
+        <div class="hist-usd">${money(h.pay.leadsVector.netUsd)}</div>
+        <div class="hist-bdt">BDT <span>${bdt(h.pay.leadsVector.netBdt)}</span></div>
+      </div>
+    </div>`;
+  } else if (vis === "shohag") {
+    addRow("Shohag", h.pay.shohag);
+    rows += `<div class="hist-row">
+      <span class="hist-label" style="color:var(--good);font-weight:600;">LV Net</span>
+      <div class="hist-right">
+        <div class="hist-usd">${money(h.pay.leadsVector.netUsd)}</div>
+        <div class="hist-bdt">BDT <span>${bdt(h.pay.leadsVector.netBdt)}</span></div>
+      </div>
+    </div>`;
+  } else {
+    addRow(NAME_MAP[vis] || vis, h.pay[vis]);
+  }
+
+  d.innerHTML = `
+    <div class="hist-header">
+      <div class="hist-period">${h.period}</div>
+      <div class="hist-hrs">${hrs(h.totalHrs)} hrs total</div>
+    </div>
+    ${rows}`;
+  return d;
+}
+
+function toggleHistory() {
+  document.getElementById("historyToggle").classList.toggle("open");
+  document.getElementById("historyList").classList.toggle("open");
+}
+</script>
+</body>
+</html>
